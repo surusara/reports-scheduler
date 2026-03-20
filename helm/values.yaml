@@ -1,0 +1,71 @@
+# -- Default values for reports-scheduler Helm chart --
+
+# Docker image
+image:
+  registry: artifactory.example.com
+  repository: docker-local/reports-scheduler
+  tag: "1.0.0"
+  pullPolicy: IfNotPresent
+
+imagePullSecrets:
+  - name: artifactory-pull-secret
+
+# Namespace (overridden per environment)
+namespace: reports-scheduler
+
+# Service account
+serviceAccount:
+  create: true
+  name: reports-scheduler-sa
+
+# -- CronJob: Reports --
+reportsJob:
+  enabled: true
+  schedule: "0 * * * 1-6"   # Hourly, Mon-Sat
+  timeZone: "Europe/Zurich"
+  concurrencyPolicy: Forbid
+  failedJobsHistoryLimit: 5
+  successfulJobsHistoryLimit: 3
+  backoffLimit: 3
+  activeDeadlineSeconds: 3600
+  startingDeadlineSeconds: 7200
+  restartPolicy: Never
+  jobName: reportsJob
+  resources:
+    requests:
+      cpu: 250m
+      memory: 512Mi
+    limits:
+      cpu: 500m
+      memory: 1Gi
+  javaOpts: "-Xms256m -Xmx512m"
+
+# -- CronJob: Delete --
+deleteJob:
+  enabled: true
+  schedule: "0 7 * * *"     # Daily 7:00 AM
+  timeZone: "Europe/Zurich"
+  concurrencyPolicy: Forbid
+  failedJobsHistoryLimit: 5
+  successfulJobsHistoryLimit: 3
+  backoffLimit: 3
+  activeDeadlineSeconds: 1800
+  startingDeadlineSeconds: 86400
+  restartPolicy: Never
+  jobName: deleteJob
+  resources:
+    requests:
+      cpu: 100m
+      memory: 256Mi
+    limits:
+      cpu: 250m
+      memory: 512Mi
+  javaOpts: "-Xms128m -Xmx256m"
+
+# -- Common environment variables --
+env: {}
+
+# -- ConfigMap data --
+config:
+  SPRING_PROFILES_ACTIVE: default
+  LOG_LEVEL: INFO

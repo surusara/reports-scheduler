@@ -1,0 +1,32 @@
+# -- DEV environment overrides --
+
+namespace: reports-scheduler-dev
+
+image:
+  registry: artifactory.example.com
+  repository: docker-local/reports-scheduler
+  # tag is injected at deploy time via --set image.tag=...
+
+config:
+  SPRING_PROFILES_ACTIVE: dev
+  LOG_LEVEL: DEBUG
+
+reportsJob:
+  resources:
+    requests:
+      cpu: 100m
+      memory: 256Mi
+    limits:
+      cpu: 250m
+      memory: 512Mi
+  javaOpts: "-Xms128m -Xmx256m"
+
+deleteJob:
+  resources:
+    requests:
+      cpu: 100m
+      memory: 128Mi
+    limits:
+      cpu: 200m
+      memory: 256Mi
+  javaOpts: "-Xms64m -Xmx128m"

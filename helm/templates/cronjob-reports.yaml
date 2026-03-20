@@ -1,0 +1,54 @@
+{{- if .Values.reportsJob.enabled }}
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: {{ .Chart.Name }}-reports
+  namespace: {{ .Values.namespace }}
+  labels:
+    {{- include "reports-scheduler.labels" . | nindent 4 }}
+    app.kubernetes.io/component: reports
+spec:
+  schedule: {{ .Values.reportsJob.schedule | quote }}
+  timeZone: {{ .Values.reportsJob.timeZone | quote }}
+  concurrencyPolicy: {{ .Values.reportsJob.concurrencyPolicy }}
+  startingDeadlineSeconds: {{ .Values.reportsJob.startingDeadlineSeconds }}
+  failedJobsHistoryLimit: {{ .Values.reportsJob.failedJobsHistoryLimit }}
+  successfulJobsHistoryLimit: {{ .Values.reportsJob.successfulJobsHistoryLimit }}
+  jobTemplate:
+    spec:
+      backoffLimit: {{ .Values.reportsJob.backoffLimit }}
+      activeDeadlineSeconds: {{ .Values.reportsJob.activeDeadlineSeconds }}
+      template:
+        metadata:
+          labels:
+            {{- include "reports-scheduler.selectorLabels" . | nindent 12 }}
+            app.kubernetes.io/component: reports
+        spec:
+          serviceAccountName: {{ include "reports-scheduler.serviceAccountName" . }}
+          {{- with .Values.imagePullSecrets }}
+          imagePullSecrets:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+          restartPolicy: {{ .Values.reportsJob.restartPolicy }}
+          containers:
+            - name: reports
+              image: {{ include "reports-scheduler.image" . }}
+              imagePullPolicy: {{ .Values.image.pullPolicy }}
+              command: ["sh", "-c"]
+              args:
+                - |
+                  BUSINESS_DATE=${BUSINESS_DATE:-$(date +%Y-%m-%d)}
+                  exec java ${JAVA_OPTS} -jar /app/app.jar \
+                    --spring.batch.job.name={{ .Values.reportsJob.jobName }} \
+                    --businessDate=${BUSINESS_DATE}
+              env:
+                - name: JAVA_OPTS
+                  value: {{ .Values.reportsJob.javaOpts | quote }}
+                - name: BUSINESS_DATE
+                  value: ""
+              envFrom:
+                - configMapRef:
+                    name: {{ .Chart.Name }}-config
+              resources:
+                {{- toYaml .Values.reportsJob.resources | nindent 16 }}
+{{- end }}

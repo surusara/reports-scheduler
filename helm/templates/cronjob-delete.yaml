@@ -1,0 +1,54 @@
+{{- if .Values.deleteJob.enabled }}
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: {{ .Chart.Name }}-delete
+  namespace: {{ .Values.namespace }}
+  labels:
+    {{- include "reports-scheduler.labels" . | nindent 4 }}
+    app.kubernetes.io/component: delete
+spec:
+  schedule: {{ .Values.deleteJob.schedule | quote }}
+  timeZone: {{ .Values.deleteJob.timeZone | quote }}
+  concurrencyPolicy: {{ .Values.deleteJob.concurrencyPolicy }}
+  startingDeadlineSeconds: {{ .Values.deleteJob.startingDeadlineSeconds }}
+  failedJobsHistoryLimit: {{ .Values.deleteJob.failedJobsHistoryLimit }}
+  successfulJobsHistoryLimit: {{ .Values.deleteJob.successfulJobsHistoryLimit }}
+  jobTemplate:
+    spec:
+      backoffLimit: {{ .Values.deleteJob.backoffLimit }}
+      activeDeadlineSeconds: {{ .Values.deleteJob.activeDeadlineSeconds }}
+      template:
+        metadata:
+          labels:
+            {{- include "reports-scheduler.selectorLabels" . | nindent 12 }}
+            app.kubernetes.io/component: delete
+        spec:
+          serviceAccountName: {{ include "reports-scheduler.serviceAccountName" . }}
+          {{- with .Values.imagePullSecrets }}
+          imagePullSecrets:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+          restartPolicy: {{ .Values.deleteJob.restartPolicy }}
+          containers:
+            - name: delete
+              image: {{ include "reports-scheduler.image" . }}
+              imagePullPolicy: {{ .Values.image.pullPolicy }}
+              command: ["sh", "-c"]
+              args:
+                - |
+                  BUSINESS_DATE=${BUSINESS_DATE:-$(date +%Y-%m-%d)}
+                  exec java ${JAVA_OPTS} -jar /app/app.jar \
+                    --spring.batch.job.name={{ .Values.deleteJob.jobName }} \
+                    --businessDate=${BUSINESS_DATE}
+              env:
+                - name: JAVA_OPTS
+                  value: {{ .Values.deleteJob.javaOpts | quote }}
+                - name: BUSINESS_DATE
+                  value: ""
+              envFrom:
+                - configMapRef:
+                    name: {{ .Chart.Name }}-config
+              resources:
+                {{- toYaml .Values.deleteJob.resources | nindent 16 }}
+{{- end }}

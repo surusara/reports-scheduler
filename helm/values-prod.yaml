@@ -1,0 +1,31 @@
+# -- PROD environment overrides --
+
+namespace: reports-scheduler-prod
+
+image:
+  registry: artifactory.example.com
+  repository: docker-local/reports-scheduler
+
+config:
+  SPRING_PROFILES_ACTIVE: prod
+  LOG_LEVEL: WARN
+
+reportsJob:
+  resources:
+    requests:
+      cpu: 500m
+      memory: 1Gi
+    limits:
+      cpu: "1"
+      memory: 2Gi
+  javaOpts: "-Xms512m -Xmx1024m"
+
+deleteJob:
+  resources:
+    requests:
+      cpu: 250m
+      memory: 512Mi
+    limits:
+      cpu: 500m
+      memory: 1Gi
+  javaOpts: "-Xms256m -Xmx512m"
